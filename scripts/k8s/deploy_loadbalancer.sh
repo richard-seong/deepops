@@ -23,7 +23,7 @@ fi
 
 # Add Helm metallb repo if it doesn't exist
 HELM_CHARTS_REPO_METALLB="${HELM_CHARTS_REPO_METALLB:-https://metallb.github.io/metallb}"
-HELM_METALLB_CHART_VERSION=${HELM_METALLB_CHART_VERSION:-0.13.9}
+HELM_METALLB_CHART_VERSION=${HELM_METALLB_CHART_VERSION:-0.12.1}
 if ! helm repo list | grep metallb  >/dev/null 2>&1 ; then
 	helm repo add metallb "${HELM_CHARTS_REPO_METALLB}"
 	helm repo update
@@ -41,9 +41,5 @@ fi
 # Set up the MetalLB load balancer
 if ! helm status metallb -n deepops-loadbalancer >/dev/null 2>&1; then
 	kubectl create namespace deepops-loadbalancer
-	kubectl label namespace deepops-loadbalancer pod-security.kubernetes.io/enforce=privileged
-	kubectl label namespace deepops-loadbalancer pod-security.kubernetes.io/audit=privileged
-	kubectl label namespace deepops-loadbalancer pod-security.kubernetes.io/warn=privileged
 	helm install --wait metallb metallb/metallb "${helm_install_args[@]}" --version ${HELM_METALLB_CHART_VERSION} --namespace deepops-loadbalancer
-	kubectl create -n deepops-loadbalancer -f "${DEEPOPS_CONFIG_DIR}/helm/metallb-resources.yml"
 fi

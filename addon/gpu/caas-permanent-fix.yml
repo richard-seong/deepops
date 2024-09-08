@@ -1,0 +1,44 @@
+---
+
+- name: Create kubelet-hook.conf 
+  hosts: gpu-node
+  become: yes
+  become_user: root
+  tasks:
+  - name: Get path for kubelet.conf
+    shell: ls /etc/kubernetes/kubelet.conf
+    register: kubelet_conf_path
+    ignore_errors: yes
+  - name: Copy kubelet.conf to kubelet-hook.conf
+    copy:
+            src:  "{{kubelet_conf_path.stdout}}"
+            dest: /etc/kubernetes/kubelet-hookserver.conf
+    when: kubelet_conf_path is defined
+
+
+- name: Modify files
+  hosts: gpu-node
+  become: yes
+  become_user: root
+  tasks:
+    - name: Modify kubelet-hookserver.conf
+      replace:
+              path: /etc/kubernetes/kubelet-hookserver.conf
+              regexp: "127.0.0.1"
+              replace: "75.17.103.201"
+    - name: Modify caas.service
+      replace:
+              path: /etc/systemd/system/caas-gpu-topology-hook-server.service
+              regexp: "kubelet.conf"
+              replace: "kubelet-hookserver.conf"
+
+
+              #- name: Restart caas daemon
+              #  hosts: gpu-node
+              #  become: yes
+              #  become_user: root
+              #  tasks:
+              #    - ansible.builtin.systemd:
+              #        state: restarted
+              #        daemon_reload: yes
+              #        name: caas-gpu-topology-hook-server.service

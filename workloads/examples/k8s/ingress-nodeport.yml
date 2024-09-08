@@ -12,12 +12,12 @@ controller:
   # NodePort can be used instead where we don't have a load balancer.
   service:
     type: NodePort
-  # Always run on control-plane nodes
+  # Always run on master nodes
   nodeSelector:
-    node-role.kubernetes.io/control-plane: ""
+    node-role.kubernetes.io/master: ""
 
 # Ingress back-end
 defaultBackend:
-  # Always run on control-plane nodes
+  # Always run on master nodes
   nodeSelector:
-    node-role.kubernetes.io/control-plane: ""
+    node-role.kubernetes.io/master: ""

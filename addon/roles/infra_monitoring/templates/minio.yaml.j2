@@ -1,0 +1,80 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: "{{ infra_monitoring_namespace }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      volumes:
+      - name: minio-volume
+        persistentVolumeClaim:
+          claimName: minio-volume
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        args:
+        - server
+        - --console-address
+        - ":9001"
+        - "/storage"
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "{{ monitoring_pw }}"
+        - name: TZ
+          value: Asia/Seoul
+        - name: LANG
+          value: ko_KR.utf8
+        ports:
+        - containerPort: 9000
+          hostPort: 9000
+        - containerPort: 9001
+          hostPort: 9001
+        volumeMounts:
+        - name: minio-volume
+          mountPath: "/storage"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-volume
+  namespace: "{{ infra_monitoring_namespace }}"
+spec:
+  storageClassName: "{{ infra_monitoring_storageclass }}"
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+---      
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: "{{ infra_monitoring_namespace }}"
+  labels:
+    run: minio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: api
+  - port: 9001
+    targetPort: 9001
+    name: ui
+  selector:
+    app: minio

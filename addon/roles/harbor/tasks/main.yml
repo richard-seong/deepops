@@ -1,0 +1,100 @@
+- name: Harbor | Add stable chart repo
+  kubernetes.core.helm_repository:
+    name: "{{ harbor_namespace }}"
+    repo_url: https://helm.goharbor.io
+
+- name: Harbor | Deploy Harbor chart on target
+  kubernetes.core.helm:
+    name: "{{ harbor_namespace }}"
+    state: present
+    chart_ref: harbor/harbor
+    release_namespace: "{{ harbor_namespace }}"
+    create_namespace: true
+    values:
+      expose:
+        type: "{{ harbor_expose_type }}"
+        tls:
+          enabled: false
+          certSource: auto
+          auto:
+            commonName: ""
+      ingress:
+        hosts:
+          core: "{{ harbor_url }}"
+          notary: "{{ harbor_notary_url }}"
+        annotations:
+          ingress.kubernetes.io/ssl-redirect: "true"
+          ingress.kubernetes.io/proxy-body-size: "0"
+          nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      externalURL: "{{ harbor_external_url }}"
+      persistence:
+        enabled: true
+        persistentVolumeClaim:
+          registry:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.registry_size }}"
+          chartmuseum:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.chartmuseum_size }}"
+          jobservice:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.jobservice_size }}"
+          database:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.database_size }}"
+          redis:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.redis_size }}"
+          trivy:
+            storageClass: "{{ harbor_sc }}"
+            accessMode: "{{ access_mode }}"
+            size: "{{ harbor_pv.trivy_size }}"
+      existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+      harborAdminPassword: "{{ harbor_admin_password }}"
+      caSecretName: ""
+      secretKey: "{{ harbor_secret_key }}"
+      existingSecretSecretKey: ""
+      proxy:
+        httpProxy: "{{ http_proxy }}"
+        httpsProxy: "{{ https_proxy }}"
+        noProxy: "{{ no_proxy }}"
+      nginx:
+        replicas: "{{ harbor_replicaset }}"
+      portal:
+        replicas: "{{ harbor_replicaset }}"
+      core:
+        replicas: "{{ harbor_replicaset }}"
+      jobservice:
+        replicas: "{{ harbor_replicaset }}"
+      registry:
+        replicas: "{{ harbor_replicaset }}"
+        credentials:
+          username: "{{ harbor_username }}"
+          password: "{{ harbor_password }}"
+      chartmuseum:
+        replicas: "{{ harbor_replicaset }}"
+      trivy:
+        replicas: "{{ harbor_replicaset }}"
+      notary:
+        enabled: true
+        server:
+          replicas: "{{ harbor_replicaset }}"
+        signer:
+          replicas: "{{ harbor_replicaset }}"
+      database:
+        type: "{{ harbor_database_type }}"
+        internal:
+          password: "{{ db_password }}"
+        external:
+          host: "{{ external_db_url }}"
+          port: "{{ external_db_port }}"
+          username: "{{ external_db_username }}"
+          password: "{{ db_password }}"
+      exporter:
+        replicas: "{{ harbor_exporter_replicaset }}"  

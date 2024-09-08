@@ -1,0 +1,12 @@
+---
+
+- hosts: all
+  gather_facts: true
+  vars:
+    ansible_become: yes
+  tasks:
+  - name: sysctl | Set sysctl parmeter vm.max_map_count
+    sysctl:
+      name: vm.max_map_count
+      value: '262144'
+      sysctl_set: yes

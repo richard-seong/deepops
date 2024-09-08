@@ -1,0 +1,3 @@
+---
+teleport_config_dir: "$HOME/.config/node_config.yaml"
+teleport_service_url: "n6-port.spcinfra.cloud"

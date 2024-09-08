@@ -1,0 +1,13 @@
+apiVerison: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teleport-cluster-pvc
+  namespace: teleport-cluster
+spec:
+  storageClassName: storageclass-n6-mgmt-default
+  accessModes:
+    - ReadWriteMany
+  volumeMode: FileSystem
+  reousrces:
+    requests:
+      storage: 50Gi

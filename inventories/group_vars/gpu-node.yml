@@ -1,0 +1,2 @@
+node_roles: gpu
+containerd_default_runtime: "nvidia"

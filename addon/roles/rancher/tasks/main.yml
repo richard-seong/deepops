@@ -1,0 +1,38 @@
+- name: Rancher | Add stable chart repo
+  kubernetes.core.helm_repository:
+    name: "{{ rancher_namespace }}"
+    repo_url: https://releases.rancher.com/server-charts/latest
+  run_once: true
+
+- name: Rancher | Generate values.yaml
+  template:
+    src: rancher_values.yaml.j2
+    dest: /tmp/rancher_values.yaml
+  run_once: true
+
+- name: Rancher | Create NameSpace
+  shell: kubectl create ns "{{ rancher_namespace }}"
+  ignore_errors: true
+
+- name: Rancher | Check NameSpace
+  shell: kubectl get ns "{{ rancher_namespace }}"
+  register: ran_namespaces
+
+- name: Rancher | Create NameSpace
+  shell: kubectl create ns "{{ rancher_namespace }}"
+  when: ran_namespaces.stdout == ""
+
+- name: Rancher | Create Ingress Secret
+  shell: kubectl -n "{{ rancher_namespace }}" create secret tls rancher-tls --cert="{{ tls_cert_path }}" --key="{{ tls_key_path }}"
+  when: tls_cert_path is defined or tls_key_path is defined
+
+- name: Rancher | Deploy Rancher chart on target
+  kubernetes.core.helm:
+    name: "{{ rancher_namespace }}"
+    state: present
+    chart_ref: cattle-system/rancher
+    release_namespace: "{{ rancher_namespace }}"
+    create_namespace: true
+    values_files: /tmp/rancher_values.yaml
+  run_once: true
+

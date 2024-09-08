@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gdr-test-{{type}}
+  labels:
+    app: sriov
+spec:
+  serviceName: gdr-test-{{type}}
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sriov
+  template:
+    metadata:
+      labels:
+        app: sriov
+      annotations:
+        k8s.v1.cni.cncf.io/networks: '[
+                {"name": "sriov-gpu-ib0", "interface": "net1"},
+                {"name": "sriov-gpu-ib1", "interface": "net2"},
+                {"name": "sriov-gpu-ib2", "interface": "net3"},
+                {"name": "sriov-gpu-ib3", "interface": "net4"}
+        ]'
+    spec:
+      imagePullSecrets:
+      - name : docker-regcred
+      #- name: harbor-sgcp
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                    - sriov
+              topologyKey: "kubernetes.io/hostname"
+      volumes:
+      - name: pv-diag-infra
+        persistentVolumeClaim:
+          claimName: pvc-static-diag-infra
+      - name: log
+        hostPath:
+          path: /var/log/diag-infra
+      tolerations:
+      - key: "status"
+        operator: "Equal"
+        value: "diag-infra"
+        effect: "NoSchedule"
+      - key: sr-cloud.com/dedicated
+        operator: Equal
+        value: data-cloud-lab-mlp-product
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Equal
+        effect: NoSchedule
+      containers:
+      #- image: "n6-repo.spcinfra.cloud/sgcp/mpitest:v0.1"
+      - image: "seokbin9023/my-repository:diag-infra"
+      #- image: {{harbor_url}}/mzc/diag-infra:1.0
+        volumeMounts:
+        - name: pv-diag-infra
+          mountPath: /mnt/
+          readOnly: false
+        - name: log
+          mountPath: /var/log/diag-infra
+        #image: "n6-repo.spcinfra.cloud/sgcp/mpitest:v0.1"
+        name: mpitest
+        securityContext:
+          capabilities:
+            add: [ "IPC_LOCK" ]
+        resources:
+          requests:
+            openshift.io/gpu_mlnx_ib0: "1"
+            openshift.io/gpu_mlnx_ib1: "1"
+            openshift.io/gpu_mlnx_ib2: "1"
+            openshift.io/gpu_mlnx_ib3: "1"
+            nvidia.com/gpu: 2
+          limits:
+            openshift.io/gpu_mlnx_ib0: "1"
+            openshift.io/gpu_mlnx_ib1: "1"
+            openshift.io/gpu_mlnx_ib2: "1"
+            openshift.io/gpu_mlnx_ib3: "1"
+            nvidia.com/gpu: 2
+        command:
+        - /usr/bin/sh
+        - -c
+        - mkdir -p /var/log/diag-infra && sleep inf
+        imagePullPolicy: IfNotPresent 

@@ -1,0 +1,21 @@
+# Specific Variables
+
+# PROXY
+# Proxy Variables needed for scripts, ansible, etc.
+#http_proxy: http://IP:Port
+#https_proxy: http://IP:Port
+#no_proxy: localhost,*.cluster.local,127.0.0.1,::1,10.233.0.0/16,cloud
+
+#proxy_env:
+#  http_proxy: '{{ http_proxy }}'
+#  https_proxy: '{{ https_proxy }}'
+#  no_proxy: '{{ no_proxy }}'
+
+# Container registry
+containerd_registries:
+  "docker.io":
+    - "https://registry-1.docker.io"
+#containerd_insecure_registries:
+#  "harbor.com":
+#    - "http://harbor.com"
+

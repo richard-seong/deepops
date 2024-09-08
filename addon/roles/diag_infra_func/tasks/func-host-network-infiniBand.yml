@@ -1,0 +1,12 @@
+---
+#- name: Diag Func | Getting Infiniband Target Hosts
+  #@- debug: var-hostvars[intentory_hostsname]
+
+- name: Diag Func | Testing network function on host
+  #shell: python3 /mnt/diag-infra/func_host_network_ethenet.py --target_group={{ node }} --log=stdout
+  shell: python3 /mnt/diag-infra/func_host_network_infiniband.py --target_group={{ target_group }} --interface={{ interface }} --log=stdout --sampling={{ sampling | default(0) }}
+  register: network_host_test
+  tags: func_host_network_infiniBand 
+
+- debug:
+    msg: "{{ network_host_test }}"

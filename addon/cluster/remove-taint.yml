@@ -1,0 +1,20 @@
+---
+
+- name: New Node unset taint
+  hosts: kube-node
+  tasks:
+    - block:
+      - name: Unset taint diag-infra on the nodes removed from new-node group
+        shell: kubectl taint node {{ inventory_hostname }} status=diag-infra:NoSchedule-
+        delegate_to: '{{ groups["kube-master"][0] }}'
+        ignore_errors: yes
+
+      - name: Unset new-infra label on the nodes removed from new-node group
+        shell: kubectl label node "{{ inventory_hostname }}" "{{ command }}"
+        with_items:
+          - new-infra
+        ignore_errors: yes
+        delegate_to: '{{ groups["kube-master"][0] }}'
+        vars:
+          command: 'node-role.kubernetes.io/"{{ item }}-"'
+      when: "'new-node' not in group_names"

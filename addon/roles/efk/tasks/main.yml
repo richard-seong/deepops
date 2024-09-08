@@ -1,0 +1,65 @@
+- name: EFK Stack | Add stable chart repo
+  kubernetes.core.helm_repository:
+    name: "elastic"
+    repo_url: https://helm.elastic.co
+  run_once: true
+
+- name: EFK Stack | Get Secret list in efk namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "elasticuser-credential"
+    namespace: "{{ efk_namespace }}"
+  register: elasticsearch_credential
+
+- name: EFK Stack | Create elasticuser secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: elasticuser-credential
+        namespace: "{{ efk_namespace }}"
+      stringData:
+        username: "elastic"
+        password: "{{ efk_pw }}"
+  when: elasticsearch_credential != None
+- debug:
+    msg: "{{elasticsearch_credential}}"
+
+- name: EFK Stack | Get Certificate Secret in efk namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "elastic-certificates"
+    namespace: "{{ efk_namespace }}"
+  register: elastic_certificates
+
+- name: EFK Stack | Create Certificate elasticuser secret
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/elasticsearch_credential.yaml
+  when: elastic_certificates != None
+
+- debug:
+    msg: "{{elastic_certificates}}"
+
+- name: EFK Stack | Generate values.yaml for elasticsearch
+  template:
+    src: elasticsearch_values.yaml
+    dest: /tmp/elasticsearch_values.yaml
+  run_once: true
+
+- name: EFK Stack | Deploy EFK chart on target
+  kubernetes.core.helm:
+    name: "{{ efk_namespace }}"
+    state: present
+    chart_ref: elasticsearch/elasticsearch-7.17.3
+    release_namespace: "{{ efk_namespace }}"
+    create_namespace: true
+    values_files:
+    - /tmp/elasticsearch_values.yaml
+  run_once: true
+

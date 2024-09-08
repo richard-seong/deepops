@@ -1,0 +1,47 @@
+---
+
+- name: Diag Func - weka[dynamic] | Copy to node for deploy pvc yaml
+  template:
+    src: weka_dynamic_pvc.yaml.j2
+    dest: /tmp/weka_dynamic_pvc.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic] | Deploy weka-pvc on kubernetes
+  shell: kubectl apply -f  /tmp/weka_dynamic_pvc.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic] | Copy to node for deploy pod yaml
+  template:
+    src: weka_dynamic_pod.yaml.j2
+    dest: /tmp/weka_dynamic_pod.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic] | Deploy weka-pod on kubernetes
+  shell: kubectl apply -f  /tmp/weka_dynamic_pod.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic]| get  pod name on kubernetes
+  shell: kubectl get pod -n diag-infra | grep weka-dynamic | grep -v NAME | awk '{ print $1 }'
+  become: yes
+  register: pod_name
+
+- name: Diag Func - weka[static] | Waiting for pod condition is ready
+  shell: kubectl wait --for=condition=Ready pod -l app=weka-dynamic-test -n diag-infra
+  become: yes
+
+- name: Diag Func | get log msg test pod on kubernetes
+  shell: kubectl logs {{ pod_name }} -n diag-infra
+  become: yes
+  register: pod_log
+
+- name: Diag Func | print pod log
+  debug: "msg='{{ pod_log }}'"
+
+- name: Diag Func - weka[dynamic] | Delete Pod
+  shell: kubectl delete -f /tmp/weka_dynamic_pod.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic] | Delete pvc
+  shell: kubectl delete -f /tmp/weka_dynamic_pvc.yaml
+  become: yes
+

@@ -1,0 +1,69 @@
+---
+- name: Wekafs | Add stable chart repo
+  kubernetes.core.helm_repository:
+    name: "{{ wekafs_namespace }}"
+    repo_url: https://weka.github.io/csi-wekafs
+
+- name: Wekafs | Generate values.yaml for wekafs
+  template:
+    src: weka_plugin_values.yaml.j2
+    dest: /tmp/weka_plugin_values.yaml
+
+- name: Wekafs | Deploy Wekafs chart on target
+  kubernetes.core.helm:
+    name: "{{ wekafs_namespace }}"
+    state: present
+    chart_ref: csi-wekafs/csi-wekafsplugin
+    release_namespace: "{{ wekafs_namespace }}"
+    create_namespace: true
+    values_files:
+      - /tmp/weka_plugin_values.yaml
+  become: yes
+  run_once: true
+
+- name: Wekafs | User name encoded with base64
+  shell: echo {{ weka_username | b64encode }}
+  register: weka_username_base64
+  run_once: true
+
+- name: Wekafs | User password encoded with base64
+  shell: echo {{ weka_password | b64encode }}
+  register: weka_password_base64
+  run_once: true
+
+- name: Wekafs | endpoint encoded with base64
+  shell: echo {{ weka_endpoint | b64encode }}
+  register: weka_endpoint_base64
+  run_once: true
+
+- name: Wekafs | Generate csi-wekafs-api-secret.yaml for wekafs
+  template:
+    src: csi-wekafs-api-secret.yml.j2
+    dest: /tmp/csi-wekafs-api-secret.yml
+  run_once: true
+
+- name: Wekafs | Apply wekafs secret on kubernetes
+  shell: kubectl apply -f /tmp/csi-wekafs-api-secret.yml
+  become: yes
+  register: wekafs_secret 
+  when: weka_username_base64.changed and weka_password_base64.changed and weka_endpoint_base64
+  run_once: true
+
+- name: Wekafs | Generate storageclass.yml for wekafs
+  template:
+    src: storageclass.yml.j2
+    dest: /tmp/{{ item }}.yml
+  vars:
+    str_class: "{{ item }}"
+  with_items:
+    - "{{ weka_storageclass }}"
+  run_once: true
+  register: wekafs_storage_class
+
+- name: Wekafs | Apply weka storageclass on kubernetes
+  shell: kubectl apply -f /tmp/{{ item }}.yml
+  become: yes
+  with_items:
+    - "{{ weka_storageclass }}"
+  run_once: true
+  when: wekafs_storage_class.changed and deploy_csi_wekafs

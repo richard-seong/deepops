@@ -1,0 +1,31 @@
+---
+
+# changed configuration for Caas gpu topology hook server
+- hosts: all
+  gather_facts: false
+  vars:
+    ansible_become: yes
+  tasks:
+  - name: all node | Rewrite nexus-registry.n6.sr-cloud.com on config.toml config file
+    replace:
+      path: "/etc/containerd/config.toml"
+      regexp: 'https://nexus-registry.n6.sr-cloud.com:12000'
+      replace: 'http://nexus-registry.n6.sr-cloud.com:12000'
+    ignore_errors: yes
+     
+  - name: all node | Rewrite harbor.n6.sr-cloud.com on config.toml config file
+    replace:
+      path: "/etc/containerd/config.toml"
+      regexp: 'https://harbor.n6.sr-cloud.com'
+      replace: 'http://harbor.n6.sr-cloud.com'
+    ignore_errors: yes
+    
+  - name: containerd | Flush handlers
+    meta: flush_handlers
+  
+  - name: containerd | Ensure containerd is started and enabled
+    systemd:
+      name: containerd
+      daemon_reload: yes
+      enabled: yes
+      state: restarted

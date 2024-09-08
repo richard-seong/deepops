@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: diag-infra-pod-ethernet-{{ role }}
+  namespace : diag-infra
+  labels:
+    app: diag-infra-ethernet
+spec:
+  containers:
+  - name: diag-infra
+    image: {{harbor_url }}/mzc/diag-infra:1.0 
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: pv-diag-infra
+      mountPath: /mnt/
+      readOnly: false
+    - name: host
+      mountPath: /etc/hosts
+      readOnly: true
+    - name: diag-log
+      mountPath: /var/log/diag-infra
+    command:
+    - sh
+    - -c
+    -  sleep inf
+  imagePullSecrets:
+  - name: harbor-regcred
+  tolerations:
+  - key: "status"
+    operator: "Equal"
+    value: "diag"
+    effect: "NoSchedule"
+  volumes:
+  - name: pv-diag-infra
+    persistentVolumeClaim:
+      claimName: pvc-static-diag-infra
+  - name: host
+    hostPath:
+      path: /etc/hosts
+  - name: diag-log
+    hostPath:
+      path: /var/log/diag-infra 
+  nodeName: {{ client }}

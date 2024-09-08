@@ -1,0 +1,20 @@
+---
+- name: caas-gpu-topology-hook-server | Checking service stats
+  stat:
+    path: /etc/systemd/system/caas-gpu-topology-hook-server.service
+  register: caas_gpu_topology_hook_server
+
+- name: caas-gpu-topology-hook-server | Ensure caas-gpu-topology-hook-server is stopped and disabled
+  systemd:
+    name: caas-gpu-topology-hook-server
+    enabled: no
+    state: stopped
+  when: caas_gpu_topology_hook_server.stat.exists
+  register: caas_gpu_topology_hook_server_service
+
+- name: caas-gpu-topology-hook-server | Remove systemd service for caas-gpu-topology-hook-server
+  file:
+    path: /etc/systemd/system/caas-gpu-topology-hook-server.service
+    state: absent
+  when: caas_gpu_topology_hook_server_service.changed
+

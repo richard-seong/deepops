@@ -1,0 +1,15 @@
+---
+
+- hosts: "{{ groups['kube-master'][0] }}"
+  tasks:
+    - name: Set date variable
+      shell: "date '+%Y%m%d-%H%M%S'"
+      register: date_step
+
+- hosts: "{{ node | default('k8s-cluster') }}"
+  gather_facts: true
+  roles:
+    - role: diag_infra_func
+      vars:
+        DiagID: "{{ date_step.stdout }}"
+        ntags: "{{ ansible_run_tags|length }}"

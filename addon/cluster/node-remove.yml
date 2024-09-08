@@ -1,0 +1,58 @@
+---
+- name: Check ansible version
+  import_playbook: ../../submodules/kubespray/ansible_version.yml
+
+- name: Ensure compatibility with old groups
+  import_playbook: ../../submodules/kubespray/legacy_groups.yml
+
+- hosts: bastion[0]
+  gather_facts: False
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
+
+- hosts: "{{ node | default('etcd:k8s_cluster:calico_rr') }}"
+  gather_facts: no
+  tasks:
+    - name: Confirm Execution
+      pause:
+        prompt: "Are you sure you want to delete nodes state? Type 'yes' to delete nodes."
+      register: pause_result
+      run_once: True
+      when:
+        - not (skip_confirmation | default(true) | bool)
+
+    - name: Fail if user does not confirm deletion
+      fail:
+        msg: "Delete nodes confirmation failed"
+      when: pause_result.user_input | default('yes') != 'yes'
+
+- name: Gather facts
+  import_playbook: ../../submodules/kubespray/facts.yml
+  when: reset_nodes|default(True)|bool
+
+- hosts: "{{ node | default('kube_node') }}"
+  gather_facts: no
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
+    - { role: remove-node/pre-remove, tags: pre-remove }
+    - { role: remove-node/remove-etcd-node }
+    - { role: reset, tags: reset, when: reset_nodes|default(True)|bool }
+
+# Currently cannot remove first master or etcd
+- hosts: "{{ node | default('kube_control_plane[1:]:etcd[1:]') }}"
+  gather_facts: no
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
+    - { role: remove-node/post-remove, tags: post-remove }
+
+# Remove Caas gpu topology hook server service
+- hosts: "{{ node | default('gpu-node') }}"
+  gather_facts: true
+  vars:
+    ansible_become: true
+  tasks:
+  - include_tasks: ../gpu/remove_gpu_node.yml

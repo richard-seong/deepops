@@ -1,0 +1,28 @@
+---
+
+- name: sriov and whereabouts | Copy configure files on node
+  copy:
+    src: sriov-whereabotus.tar.gz 
+    dest: /tmp/sriov-whereabotus.tar.gz
+
+- name: sriov and whereabouts | Extract Test python files on node
+  unarchive:
+    src: /tmp/sriov-whereabotus.tar.gz
+    dest: /tmp/
+    remote_src: yes
+  become: yes
+
+- name: sriov and whereabouts | deploy helm on node
+  kubernetes.core.helm:
+    name: sriov
+    chart_ref: /tmp/sriov-network-operator
+    release_namespace: sriov-network-operator
+    create_namespace: true
+
+- name: sriov and whereabouts | deploy helm on node
+  kubernetes.core.helm:
+    name: whereabouts
+    chart_ref: /tmp/whereabouts
+    release_namespace: kube-system
+
+

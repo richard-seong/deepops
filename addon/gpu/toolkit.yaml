@@ -1,0 +1,15 @@
+
+- hosts: kube-master[0]
+  gather_facts: true
+  tasks:
+    - name: check nvidia container toolkit
+      shell:  kubectl get pod -n gpu-operator-resources | grep nvidia-container-toolkit- | awk '{print $1}'
+      register: nvidia_container_toolkit
+
+    - name: delete nvidia container toolkit
+      shell: kubectl delete pod {{ item }} -n gpu-operator-resources
+      with_items:
+        "{{ nvidia_container_toolkit.stdout_lines }}"
+      when: nvidia_container_toolkit is search("nvidia-container-toolkit")
+
+

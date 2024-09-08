@@ -1,0 +1,92 @@
+- name: Infra-Monitoring | Add stable bitnami chart repo
+  kubernetes.core.helm_repository:
+    name: bitnami
+    repo_url: https://charts.bitnami.com/bitnami
+  tags: 
+    - thanos
+    - grafana
+
+- name: Infra-Monitoring | Generate values.yaml for thanos
+  template:
+    src: thanos_values.yaml.j2
+    dest: /tmp/thanos_values.yaml
+  tags: thanos
+  when: deploy_thanos
+
+- name: Infra-Monitoring | Generate values.yaml for thanos minio
+  template:
+    src: minio.yaml.j2
+    dest: /tmp/minio.yaml
+  tags: thanos
+  when: deploy_thanos
+
+- name: Infra-Monitoring | Check NameSpace
+  shell: kubectl get ns "{{ infra_monitoring_namespace }}"
+  register: monitoring_namespaces
+  ignore_errors: true
+
+- name: Infra-Monitoring | Create NameSpace
+  shell: kubectl create ns "{{ infra_monitoring_namespace }}"
+  when: monitoring_namespaces.stdout == ""
+
+- name: Infra-Monitoring | Deploy Minio
+  shell: kubectl -n "{{ infra_monitoring_namespace }}" apply -f /tmp/minio.yaml
+  tags: thanos
+  when: deploy_thanos
+
+- name: Infra-Monitoring | Deploy Promethus chart on target
+  kubernetes.core.helm:
+    name: kube-prometheus
+    state: present
+    chart_ref: bitnami/kube-prometheus
+    release_namespace: "{{ infra_monitoring_namespace }}"
+    create_namespace: true
+    values:
+      prometheus:
+        thanos:
+          create: true
+          service:
+            type: "{{ prometheus_thanos_service_type }}"
+        service:
+          type: "{{ prometheus_service_type }}"
+        externalLabels:
+          cluster: "{{ prometeus_external_label_name }}"
+      operator:
+        service:
+          type: "{{ prometheus_operator_service_type }}"
+      alertmanager:
+        service:
+          type: "{{ alertmanager_service_type }}"  
+
+- name: Infra-Monitoring | Deploy Thanos chart on target
+  kubernetes.core.helm:
+    name: thanos
+    state: present
+    chart_ref: bitnami/thanos
+    release_namespace: "{{ infra_monitoring_namespace }}"
+    create_namespace: true
+    values_files: /tmp/thanos_values.yaml
+  tags: thanos
+  when: deploy_thanos
+
+- name: Infra-Monitoring | Deploy grafna chart on target
+  kubernetes.core.helm:
+    name: grafana
+    state: present
+    chart_ref: bitnami/grafana
+    release_namespace: "{{ infra_monitoring_namespace }}"
+    create_namespace: true
+    values:
+      service:
+        type: "{{ grafana_service_type }}"
+        ports:
+          grafana: 80
+      admin:
+        password: "{{ monitoring_pw }}"
+      persistence:
+        enabled: false
+        storageClass: "{{ infra_monitoring_storageclass }}"
+        accessMode: ReadWriteOnce
+        size: "{{ grafana_size }}"  
+  when: deploy_grafana
+  tags: grafana

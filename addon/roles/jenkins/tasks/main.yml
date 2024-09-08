@@ -1,0 +1,133 @@
+---
+- name: Jenkins | Create jenkins directory
+  file:
+    path: /tmp/jenkins
+    state: directory
+
+- name: Jenkins | deploy jenkins
+  shell:  helm repo add jenkins https://charts.jenkins.io
+  register: repo_add_output
+- debug:
+    msg: "{{ repo_add_output }}"
+
+- name: Jenkins | create ns
+  shell: kubectl create namespace {{jenkins_namespace}} --dry-run=client -o yaml | kubectl apply -f -
+  register: create_ns_output
+- debug:
+    msg: "{{ create_ns_output }}"
+
+- name: Jenkins | Copy to node for values
+  template:
+    src: values_must.yaml.j2
+    dest: /tmp/jenkins/values.yaml
+
+- name: Jenkins | Copy to node for values
+  template:
+    src: jenkins_pvc.yaml.j2
+    dest: /tmp/jenkins/jenkins_pvc.yaml
+
+- name: Jenkins | check pvc exists
+  shell: kubectl get pvc jenkins-data -n {{jenkins_namespace}} -o name
+  register: pvc_name
+  ignore_errors: True
+
+- debug:
+    msg: "{{ pvc_name.stdout }}"
+
+- name: Jenkins | create data pvc
+  shell: kubectl apply -f /tmp/jenkins/jenkins_pvc.yaml 
+  register: apply_output
+  when: pvc_name.stdout != "persistentvolumeclaim/jenkins-data"
+
+- debug:
+    msg: "{{ apply_output }}"
+
+- name: Jenkins | template for permission change statefulset
+  template:
+    src: jenkins_statefulset.yaml.j2
+    dest: /tmp/jenkins/jenkins_statefulset.yaml
+  become: true
+
+- name: Jenkins | apply statefulset
+  shell: kubectl apply -f /tmp/jenkins/jenkins_statefulset.yaml
+  become: true
+  register: apply_output
+
+- debug:
+    msg: "{{ apply_output.stdout }}"
+
+- name: Jenkins | wait for statefulset is Running
+  shell: kubectl get sts -n {{jenkins_namespace}} -l app=jenkins --no-headers | awk {'print $2'}
+  register: sts_status
+  retries: 10
+  delay: 10
+  until: sts_status.stdout == "1/1" 
+
+- name: Jenkins | Delete Volume Permission Statefulset 
+  shell: kubectl delete -f /tmp/jenkins/jenkins_statefulset.yaml  
+  become: true
+  register: apply_output
+- debug:
+    msg: "{{ apply_output.stdout }}"
+
+- name: Jenkins | Deploy Jenkins chart on Target 
+  kubernetes.core.helm:
+    name: jenkins
+    chart_ref: jenkins/jenkins
+    release_namespace: "{{jenkins_namespace}}"
+    values_files:
+    - /tmp/jenkins/values.yaml
+  register: helm_install_output
+
+- debug:
+    msg: "{{ helm_install_output.stdout }}"
+
+- name: Jenkins | Waiting for jenkins statefulset condition is ready
+  shell: kubectl get statefulset -n {{jenkins_namespace}} -l app.kubernetes.io/name=jenkins --no-headers | awk '{print $2}'
+  register: kubectl_status
+  retries: 10
+  delay: 10
+  until:  kubectl_status.stdout  == "1/1"
+
+- name: Jenkins | Get jenkins Pod name
+  shell: kubectl get pods -n {{ jenkins_namespace}} -l app.kubernetes.io/name=jenkins --no-headers | awk '{print $1'} 
+  register: jenkins_pod
+
+- name: Jenkins | Copy jenkins plugins files
+  copy:
+     src: "{{ item }}" 
+     dest: /tmp/jenkins/
+  with_fileglob:
+    - "plugins*"
+
+- name: Jenkins | Merget split plugin files
+  shell: cat /tmp/jenkins/plugins* >> /tmp/jenkins/plugins.tar
+
+- name: Jenkins | Copy plugins to jenkins pod
+  shell: kubectl cp /tmp/jenkins/plugins.tar {{jenkins_namespace}}/jenkins-0:/var/jenkins_home/ -c jenkins
+  register: log
+
+- debug:
+    msg: "{{log.stdout}}"
+ 
+- name: Jenkins | Extract plugins.tar in jenkins pod
+  shell: kubectl exec -it jenkins-0 -c jenkins -n {{jenkins_namespace}} -- tar -xvf /var/jenkins_home/plugins.tar -C /var/jenkins_home/
+
+- name: Jenkins | Copy Jenkins Code
+  copy:
+    src: workspace.tar
+    dest: /tmp/jenkins/workspace.tar
+
+- name: Jenkins | Copy Jenkins Code to pod
+  shell: kubectl cp /tmp/jenkins/workspace.tar {{jenkins_namespace}}/jenkins-0:/var/jenkins_home/ -c jenkins
+
+- name: Jenkins | Extract Jenksin Code in pod
+  shell: kubectl exec -it jenkins-0 -c jenkins -n {{jenkins_namespace}} -- tar -xvf /var/jenkins_home/workspace.tar -C /var/jenkins_home/
+
+- name: Jenkins | Restart Jenkins pod
+  shell: kubectl rollout restart sts jenkins -n {{jenkins_namespace}}
+
+- name: Jenkins | Delete Jenkins Directory
+  file:
+    state: absent
+    path: /tmp/jenkins

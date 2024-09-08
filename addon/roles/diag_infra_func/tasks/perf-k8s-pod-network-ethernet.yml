@@ -1,0 +1,78 @@
+---
+- name: Diag Func | Copy Pod manifests
+  template:
+   src: perf_pod_network_ethernet.yaml.j2
+   dest: /tmp/perf-pod-{{ role }}.yml
+  vars:
+   role: server
+  delegate_to: localhost
+
+- name: Diag Func | Copy Pod manifests
+  template:
+   src: perf_pod_client_network_ethernet.yaml.j2
+   dest: /tmp/perf-pod-client.yml
+  vars:
+   role: client 
+  delegate_to: localhost
+
+- name: Diag Func | Deploy perf server pod on kubernetes
+  shell: kubectl apply -f  /tmp/perf-pod-server.yml && kubectl apply -f /tmp/perf-pod-client.yml
+  become: yes
+  delegate_to: localhost
+
+- name: Diag Func | Waiting for pod condition is ready
+  shell: kubectl get pods  -n diag-infra | grep pod-ethernet-client | awk '{print $3 }'
+  register: kubectl_status
+  retries: 10 
+  delay: 10
+  until:  kubectl_status.stdout  == "Running"
+  delegate_to: localhost
+            
+- debug:
+    msg: "{{ kubectl_status.stdout }}"
+
+
+- name: Diag Func | get test server pod ip on kubernetes
+  shell: kubectl get pod -n diag-infra -o wide| grep pod-ethernet-server | awk '{print $6 }' 
+  become: yes
+  delegate_to: localhost
+  register: server_pod_ip
+  
+- name: Diag Func | get server pod name on kubernetes
+  shell: kubectl get pod -n diag-infra | grep pod-ethernet-server | awk '{ print $1 }'
+  become: yes
+  delegate_to: localhost
+  register: server_pod_name
+
+- name: Diag Func | get client  pod name on kubernetes
+  shell: kubectl get pod -n diag-infra | grep pod-ethernet-client | awk '{ print $1 }'
+  become: yes
+  delegate_to: localhost
+  register: client_pod_name
+  
+#- name: Diag Func | exec server pod on kubernetes
+#  shell: kubectl exec {{ server_pod_name.stdout }} -n diag-infra -- python3 /mnt/diag-infra/perf_k8s_pod_network_ethernet.py --log=stdout --type=server --diag_id=1
+#  become: yes
+#  delegate_to: localhost
+#  register: perf_server_result
+
+  #- debug: "{{ perf_server_resulut }}"
+
+- name: Diag Func | exec client pod on kubernetes
+  shell: kubectl exec {{ client_pod_name.stdout }} -n diag-infra -- python3 /mnt/diag-infra/perf_k8s_pod_network_ethernet.py --ip={{ server_pod_ip.stdout }} --log=file --diag_id={{DiagID}} --ntags={{ntags}} --type=client 
+  become: yes
+  register: perf_client_result
+  delegate_to: localhost
+    
+- debug:
+    msg: "{{ perf_client_result }}"
+
+#- name: Diag Func - POD[ethernet] | Delete client Pod
+#  shell: kubectl delete -f /tmp/perf-pod-client.yml 
+#  become: yes
+#  delegate_to: localhost
+
+#- name: Diag Func - POD[ethernet | Delete server Pod
+#  shell: kubectl delete -f /tmp/perf-pod-server.yml 
+#  become: yes
+#  delegate_to: localhost

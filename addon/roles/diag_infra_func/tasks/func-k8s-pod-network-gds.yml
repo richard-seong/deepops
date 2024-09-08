@@ -1,0 +1,68 @@
+---
+- name: Diag Func | Copy to node for deploy yaml 
+  template:
+    src: gds_pod.yaml.j2
+    dest: /tmp/gds-pod-{{ansible_hostname}}.yaml
+  become: yes
+  vars:
+    node: "{{ansible_hostname}}"
+    type: func
+
+- name: Diag Func - weka[dynamic] | Copy to node for deploy pvc yaml
+  template:
+    src: gds_pvc.yaml.j2
+    dest: /tmp/weka_dynamic_pvc.yaml
+  become: yes
+
+- name: Diag Func - weka[dynamic] | Deploy weka-pvc on kubernetes
+  shell: kubectl apply -f  /tmp/weka_dynamic_pvc.yaml -n default
+  become: yes
+  
+- name: Diag Func | Deploy test gds pod on kubernetes
+  shell: kubectl apply -f  /tmp/gds-pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ansible_hostname}}"
+
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -n default  | grep func-gds-test | awk '{print $1}' 
+  become: yes
+  register: pod_name
+
+- name: Diag Func | Waiting for pod condition is ready
+  shell: kubectl get pods | grep func-gds-test-pod-| awk '{print $3 }'
+  register: kubectl_status
+  retries: 10
+  delay: 10
+  until:  kubectl_status.stdout  == "Running"
+
+- debug: msg="{{ kubectl_status.stdout }}"
+
+- name: Diag Func | set cufile  gds pod on kubernetes
+  shell: kubectl exec -it {{ pod_name.stdout }} -- sh set-gds.sh 
+  register: pod_log
+  run_once: true 
+
+- name: Diag Func | print pod log set cufile
+  debug: "msg='{{ pod_log }}'"
+  run_once: true 
+
+- name: Diag Func | exec gds pod on kubernetes
+  shell: kubectl exec -it {{ pod_name.stdout }} -- python3 /mnt/diag-infra/func_k8s_pod_network_gds.py --log=file --device_list=net1,net2 --gpu_count=8 --diag_id={{ DiagID }} --ntags={{ ntags }}
+  register: pod_log
+
+
+- name: Diag Func | print pod log
+  debug: "msg='{{ pod_log }}'"
+
+- name: Diag Func | Delete gds pod on kubernetes
+  shell: kubectl delete -f  /tmp/gds-pod-{{ item }}.yaml
+  become: yes
+  with_items:
+   - "{{ansible_hostname}}"
+
+- name: Diag Func  | Delete weka-pvc on kubernetes
+  shell: kubectl delete -f  /tmp/weka_dynamic_pvc.yaml -n default
+  become: yes
+
+

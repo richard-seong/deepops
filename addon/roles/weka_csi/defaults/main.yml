@@ -1,0 +1,16 @@
+---
+wekafs_secret: csi-wekafs-api-secret
+wekafs_namespace: csi-wekafs
+
+weka_username: admin
+weka_password: password
+weka_endpoint: 172.28.11.181:14000,172.28.11.183:14000,172.28.11.185:14000,172.28.11.187:14000,172.28.11.189:14000,172.28.11.191:14000,172.28.11.193:14000,172.28.11.195:14000,172.28.11.197:14000,172.28.11.199:14000
+
+kubelet_root_dir: /var/lib/kubelet
+
+filesystem_name: default
+default_class: n6-sgcp-mgmt-default
+weka_storageclass:
+  - n6-sgcp-mgmt-default
+  - n6-sgcp-mgmt-system
+  - n6-sgcp-repo

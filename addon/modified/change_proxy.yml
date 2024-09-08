@@ -1,0 +1,21 @@
+---
+
+# changed configuration for Caas gpu topology hook server
+- hosts: all
+  gather_facts: true
+  vars:
+    ansible_become: yes
+  tasks:
+  - name: all node | Change artfact on http-proxy.conf config file
+    replace:
+      path: "/etc/systemd/system/containerd.service.d/http-proxy.conf"
+      regexp: 'sec.samsung.net'
+      replace: 'bart.sec.samsung.net'
+    ignore_errors: yes
+     
+  - name: containerd | Ensure containerd is started and enabled
+    systemd:
+      name: containerd
+      daemon_reload: yes
+      enabled: yes
+      state: restarted

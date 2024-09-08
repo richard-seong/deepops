@@ -1,0 +1,63 @@
+---
+- name: Diag Func - weka[static] | Register defulat storage class
+  shell: k get sc | grep "(default)" | awk '{ print $1 }'
+  register: default_storageclass
+
+- name: Diag Func - weka[static] | Copy to node for deploy pv yaml
+  template:
+    src: weka_static_pv.yaml.j2
+    dest: /tmp/weka_static_pv.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Deploy weka-pv on kubernetes
+  shell: kubectl apply -f  /tmp/weka_static_pv.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Copy to node for deploy pvc yaml
+  template:
+    src: weka_static_pvc.yaml.j2
+    dest: /tmp/weka_static_pvc.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Deploy weka-pvc on kubernetes
+  shell: kubectl apply -f  /tmp/weka_static_pvc.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Copy to node for deploy pod yaml
+  template:
+    src: weka_static_pod.yaml.j2
+    dest: /tmp/weka_static_pod.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Deploy weka-pod on kubernetes
+  shell: kubectl apply -f  /tmp/weka_static_pod.yaml
+  become: yes
+
+- name: Diag Func - weka[static] | Waiting for pod condition is ready 
+  shell: kubectl wait --for=condition=Ready pod -l app=weka-static-test -n diag-infra 
+  become: yes
+
+- name: Diag Func - weka[static]| get  pod name on kubernetes
+  shell: kubectl get pod -n diag-infra -o wide | grep weka-static | grep -v NAME | awk '{ print $1 }'
+  become: yes
+  register: pod_name
+
+- name: Diag Func | exec test pod on kubernetes
+  shell: kubectl logs {{ pod_name.stdout }} -n diag-infra
+  become: yes
+  register: pod_log
+
+- name: Diag Func | print pod log
+  debug: "msg='{{ pod_log }}'"
+
+- name: Diag Func - weka[static] | Delete Pod 
+  shell: kubectl delete -f /tmp/weka_static_pod.yaml 
+  become: yes
+
+- name: Diag Func - weka[static] | Delete pvc
+  shell: kubectl delete -f /tmp/weka_static_pvc.yaml 
+  become: yes
+
+- name: Diag Func - weka[static] | Delete pv
+  shell: kubectl delete -f /tmp/weka_static_pv.yaml 
+  become: yes

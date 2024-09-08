@@ -1,0 +1,91 @@
+---
+
+## Host Network Test
+
+#- name: Diag Func | Test verification network interface of node
+#  import_tasks: test-host.yml
+#  tags:
+#    - func_host_network_ethenet  
+
+# Pod Network Test
+- name: Diag Func | Test verification network interface of node
+  import_tasks: func-host-network-ethernet.yml
+  tags:
+    - func_host_network_ethernet
+
+      #- name: Diag Func | Test verification network interface of infiniBand
+      #  import_tasks: func-host-network-infiniBand.yml
+      # tags:
+      # - func_host_network_infiniBand
+
+      #- name: Diag Func | Test verification network interface of infiniBand
+      # import_tasks: perf-k8s-pod-network-infiniBand.yml
+      # tags:
+      #- perf_k8s_pod_network_infiniband
+
+- name: Diag Func | Test verification pod network interface in kubernetes
+  import_tasks: func-pod-network-ethernet.yml
+  #delegate_to: "{{ groups.kube_master[0] }}"
+  delegate_to: localhost
+  tags:
+    - func_pod_network_ethernet
+
+- name: Diag Func | Test Perf pod network interface in kubernetes
+  import_tasks: perf-k8s-pod-network-ethernet.yml
+  tags:
+    - perf_k8s_pod_network_ethernet
+#- name: Diag Func | Test infiniband
+#  import_tasks: func-pod-network-infiniBand.yml
+#  delegate_to: localhost
+#  tags:
+#    - func_pod_network_infiniband
+
+      #- name: Diag Func | Test verification of teleport
+  #import_tasks: func-host-teleport.yml
+  # tags:
+          # - func_host_teleport
+      #- name: Diag Func | Test verification of harbor
+      # import_tasks: func-host-harbor.yml
+      # tags:
+      #- func_host_harbor
+      #- name: Diag Func | Test verification of proxy
+      # import_tasks: func-host-proxy.yml
+      #tags:
+      # - func_host_proxy
+
+- name: Diag Func | Test weka[dynamic]
+  import_tasks: func-k8s-weka-dynamic-provisioning.yml
+  delegate_to: localhost
+  tags:
+    - func_k8s_weka_dynamic_provisioning
+
+- name: Diag Func | Test weka[static]
+  import_tasks: func-k8s-weka-static-provisioning.yml
+  delegate_to: localhost
+  tags:
+    - func_k8s_weka_static_provisioning
+
+- name: Diag Func | Test gdr pod network
+  import_tasks: func-k8s-pod-network-gdr.yml
+  delegate_to: localhost
+  tags:
+    - func_k8s_pod_network_gdr
+
+- name: Diag Func | Test gds
+  import_tasks: func-k8s-pod-network-gds.yml 
+  delegate_to: localhost
+  tags:
+    - func_k8s_pod_network_gds 
+
+- name: Diag Func | Test gdr pod network
+  import_tasks: perf-k8s-pod-network-gds.yml
+  delegate_to: localhost
+  tags:
+    - perf_k8s_pod_network_gds
+
+
+- name: Diag Func | Check k8s Diff 
+  import_tasks: func-k8s-diff-resources.yml
+  #delegate_to: localhost
+  tags:
+    - func_k8s_diff_resources 

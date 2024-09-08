@@ -1,0 +1,87 @@
+---
+- name: Metallb | Create metallb directory
+  file:
+    path: /tmp/metallb
+    state: directory
+
+- name: Metallb | Add stable chart repo
+  kubernetes.core.helm_repository:
+    name: "{{ metallb_namespace }}"
+    repo_url: https://metallb.github.io/metallb
+  run_once: true
+
+- name: Metallb | Generate values.yaml for Metallb
+  template:
+    src: metallb_values.yaml.j2
+    dest: /tmp/metallb/metallb_values.yaml
+  run_once: true
+
+- name: Metallb | Deploy Metallb chart on target
+  kubernetes.core.helm:
+    name: metallb 
+    state: present
+    chart_ref: metallb/metallb
+    release_namespace: "{{ metallb_namespace }}"
+    create_namespace: true
+    values_files:
+      - /tmp/metallb/metallb_values.yaml
+#  become: yes
+  run_once: true
+
+- name: Metallb | Wait for Metallb is Running
+  shell: kubectl get deploy -n {{metallb_namespace}} metallb-controller  --no-headers | awk {'print $2'}
+  register: metallb_status
+  retries: 20
+  delay: 10
+  until: metallb_status.stdout == "1/1"
+
+- name: Metallb | Generate ipaddresspool.yml for Metallb
+  template:
+    src: metallb_ipaddresspool.j2
+    dest: /tmp/metallb/metallb_ipaddress.yaml
+  run_once: true
+
+- name: Metallb | Deploy ipaddresspool.yml for Metallb
+  shell: kubectl apply -f  /tmp/metallb/metallb_ipaddress.yaml -n {{metallb_namespace}}
+  register: create_output
+
+    #- debug:
+    #    msg: "{{create_output.stdout}}"
+
+    #- name: Ingress | Get ingress-nginx ns
+    #  shell: kubectl get ns ingress-nginx
+    #  register: nginx_ns
+    #  ignore_errors: true
+
+    #- name: Ingress | Create ns Ingress-nginx
+    #  shell: kubectl create ns ingress-nginx
+    #  when: nginx_ns.stdout == ""
+
+    #- name: Ingress | Copy nginx deploy yaml
+    #  template:
+    #    src: ingress_deploy.yaml.j2
+    #    dest: /tmp/metallb/ingress_deploy.yaml
+
+    #- name: Ingress | Create Deploy Ingress-nginx
+    #  shell: kubectl apply -f /tmp/metallb/ingress_deploy.yaml 
+    #  register: deploy_log
+
+    #- debug:
+    #    msg: "{{deploy_log.stdout}}"
+
+    #- name: Ingress | Waitr for Ingress-nginx is Runnging
+    #  shell: kubectl get deploy -l app.kubernetes.io/name=ingress-nginx -n ingress-nginx --no-headers | awk {'print $2'}
+    #  register: ingress_status
+    #  retries: 20
+    #  delay: 10
+    #  until: ingress_status.stdout == "1/1"
+
+#- name: Metallb | Edit Ingres-nginx Service
+#  shell: kubectl delete svc ingress-nginx-controller -n ingress-nginx
+
+#- name: Metallb | Create Ingress-nginx Service
+#  shell: kubectl expose deploy ingress-nginx-controller --type=LoadBalancer --external-ip={{nginx_ingress_external_ip}} -n ingress-nginx
+#  register: service_output
+
+#- debug:
+#    msg: "{{ service_output.stdout }}"

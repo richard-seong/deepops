@@ -1,0 +1,57 @@
+objstoreConfig: |-
+  type: s3
+  config:
+    bucket: thanos
+    endpoint: "minio-service.{{ infra_monitoring_namespace }}.svc.cluster.local:9000"
+    access_key: minio
+    secret_key: "{{ monitoring_pw }}"
+    insecure: true
+
+queryFrontend:
+  config: |-
+    type: IN-MEMORY
+    config:
+      max_size: 512MB
+      max_size_items: 100
+      validity: 100s
+  service:
+    type: "{{ thanos_queryfrontend_service_type }}"
+    ports:
+      http: 9090
+    nodePorts:
+      http: "30030"
+
+query:
+  stores:
+{% for thanos_prometheus_envoy in thanos_prometheus %}
+    - {{ thanos_prometheus_envoy }}
+{% endfor %}
+
+bucketweb:
+  enabled: false
+
+compactor:
+  enabled: true
+  retentionResolutionRaw: 30d
+  retentionResolution5m: 30d
+  retentionResolution1h: 10y
+  consistencyDelay: 30m
+
+storegateway:
+  enabled: true
+  config: |-
+  type: IN-MEMORY
+  config:
+    max_size: 250MB
+    max_item_size: 125MB
+
+ruler:
+  enabled: true
+  alertmanagers:
+    - "http://kube-prometheus-alertmanager.{{ infra_monitoring_namespace }}.svc.cluster.local:9093"
+  config: |-
+    groups:
+      - name: "metamonitoring"
+        rules:
+          - alert: "PrometheusDown"
+            expr: absent(up{prometheus="monitoring/prometheus-operator"})

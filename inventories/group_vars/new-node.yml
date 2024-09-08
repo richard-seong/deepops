@@ -1,0 +1,7 @@
+---
+node_taints:
+  - "status=diag-infra:NoSchedule"
+
+node_labels:
+  node-role.kubernetes.io/new-infra: ""
+

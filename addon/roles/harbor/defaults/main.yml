@@ -1,0 +1,39 @@
+
+harbor_namespace: harbor
+harbor_expose_type: clusterIP # "ingress", "clusterIP", "nodePort" or "loadBalancer"
+
+http_proxy:
+https_proxy:
+no_proxy:
+
+harbor_url: harbor.ama.lab
+harbor_notary_url: notary-harbor.ama.lab
+harbor_external_url: http://harbor.ama.lab
+
+harbor_sc: default
+access_mode: ReadWriteMany
+
+harbor_pv:
+  registry_size: 10Gi
+  chartmuseum_size: 10Gi
+  jobservice_size: 10Gi
+  database_size: 10Gi
+  redis_size: 10Gi
+  trivy_size: 10Gi
+
+harbor_replicaset: "1"
+harbor_exporter_replicaset: "1"
+
+harbor_admin_password: "megazone00!"
+harbor_secret_key: "not-a-secure-key"
+#harbor_secret_key: "Aiinfra@2022sgcp"
+
+harbor_username: megazone
+harbor_password: megazone
+
+harbor_database_type: internal ## internal or external or redis
+
+external_db_url: "harbor-postgres-postgresql-ha-pgpool.harbor.svc.cluster.local"
+external_db_port: 5432
+external_db_username: "postgres"
+db_password: "megazone00!"

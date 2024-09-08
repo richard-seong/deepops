@@ -1,0 +1,23 @@
+
+#- hosts: "{{ groups['kube-master'][0] }}"
+- hosts: localhost
+  gather_facts: true
+  vars:
+    deploy_metallb: true   ## true or false
+    deploy_harbor: false
+    deploy_teleport: false
+    deploy_efk: false
+    deploy_jenkins: false
+    deploy_monitoring: true  ## prometheus and thanos envoy
+    deploy_thanos: true
+    deploy_grafana: true
+    deploy_rancher: false
+  roles:
+  - {role: metallb, tags: metallb, when: deploy_metallb}
+  - {role: harbor, tags: harbor, when: deploy_harbor}
+  - {role: teleport, tags: teleport, when: deploy_teleport}
+  - {role: jenkins, tags: jenkins, when: deploy_jenkins}
+  - {role: efk, tags: efk, when: deploy_efk} 
+  - {role: infra_monitoring, tags: monitoring, when: deploy_monitoring}
+  - {role: infra_monitoring, tags: grafana, when: deploy_grafana}
+  - {role: rancher, tags: rancher, when: deploy_rancher}

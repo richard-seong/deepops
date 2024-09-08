@@ -1,0 +1,43 @@
+
+- name: Teleport | Get Persistent Volume list in teleport namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: "teleport-cluster-pvc"
+    namespace: "{{ teleport_namespace }}"
+  register: teleport_pvc
+
+- name: Teleport | Generate PVC.yml for Teleport
+  template:
+    src: teleport-pvc.yaml.j2
+    dest: /tmp/teleport-pvc.yaml
+  run_once: true
+
+- name: Teleport | Create Teleport PVC secret
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/teleport-pvc.yaml
+
+- name: Teleport | Copy Teleport Chart on node
+  copy:
+    src: teleport.tar
+    dest: /tmp/teleport.tar
+
+- name: Teleport | Extract teleport chart on node
+  unarchive:
+    src: /tmp/teleport
+    dest: /tmp
+    remote_src: yes
+
+- name: Teleport | Extract teleport chart on node
+  kubernetes.core.helm:
+    name: "{{ teleport_namespace }}"
+    state: present
+    chart_ref: /tmp/teleport
+    release_namespace: "{{ teleport_namespace }}"
+    create_namespace: true
+    values_files:
+    - /tmp/teleport_values.yaml
+  run_once: true
+
+

@@ -1,0 +1,158 @@
+---
+- name: Diag Func | Copy to node for deploy yaml 0001
+  template:
+    src: gdr_statefulset.yaml.j2
+    dest: /tmp/gdr-statefulset-{{ansible_hostname}}-0001.yaml
+  become: yes
+  vars:
+    type: "{{ansible_hostname}}-0001"
+    nodename_var: "srda100-001"
+- name: Diag Func | Deploy test gdr pod on kubernetes
+  shell: kubectl apply -f  /tmp/gdr-statefulset-{{ item }}.yaml
+  become: yes
+  register: apply_output
+  with_items:
+    - "{{ansible_hostname}}-0001"
+- debug:
+    msg: "{{ apply_output }}"
+
+- name: Diag Func | Waiting for statefulset condition is ready
+  shell: kubectl get statefulset | grep gdr | awk '{print $2}'
+  register: kubectl_status
+  retries: 1000
+  delay: 10
+  until:  kubectl_status.stdout  == "2/2"
+
+  #- name: Diag Func | Waiting for pod condition is ready
+  # shell: kubectl wait --for=condition=Ready statefulset/gdr-test-srda100-001-0001  --timeout=600s
+  #shell: kubectl wait --for=condition=ready {{ diag_pod_name_1.stdout_lines | join(',') }} 
+  #become: yes
+
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -oname | grep -e -0001-0
+  become: yes
+  register: diag_pod_name_1
+
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -oname | grep -e -0001-1
+  become: yes
+  register: diag_pod_name_2
+  #- name: Diag Func | Waiting for pod condition is ready
+  # shell: kubectl wait --for=condition=ready {{ diag_pod_name_2.stdout_lines | join(',') }} 
+  # become: yes
+- name: Diag Func | exec get ssh on pod-1
+  shell: kubectl exec -it {{ diag_pod_name_1.stdout_lines | join(',') }} -- ssh-keygen -t rsa -q -f "/root/.ssh/id_rsa" -N ""
+  become: yes
+  register: ssh_pod_1
+- name: Diag Func | exec get ssh on pod-2
+  shell: kubectl exec -it {{ diag_pod_name_2.stdout_lines | join(',') }} -- ssh-keygen -t rsa -q -f "/root/.ssh/id_rsa" -N ""
+  become: yes
+  register: ssh_pod_2
+- name: Diag Func | exec get ssh on pod-1
+  shell: kubectl exec -it {{ diag_pod_name_1.stdout_lines | join(',') }} -- cat /root/.ssh/id_rsa.pub
+  become: yes
+  register: ssh_pod_1
+- name: Diag Func | exec get ssh on pod-2
+  shell: kubectl exec -it {{ diag_pod_name_2.stdout_lines | join(',') }} -- cat /root/.ssh/id_rsa.pub
+  become: yes
+  register: ssh_pod_2
+- debug:
+    msg: "{{ ssh_pod_1 }}"
+- debug:
+    msg: "{{ ssh_pod_2 }}"
+
+- name: Diag Func | pass_ssh_pod-1 to pod-2
+  shell: kubectl exec {{diag_pod_name_2.stdout_lines | join(',')}} -- python3 /mnt/diag-infra/func_k8s_pod_network_gdr.py --type=ssh --key="{{ssh_pod_1.stdout}}" --diag_id={{DiagID}} --ntags={{ntags}}
+  become: yes
+  register: pass_pod2
+- debug:
+    msg: "{{ pass_pod2 }}"
+
+- name: Diag Func | pass_ssh_pod-2 to pod-1
+  shell: kubectl exec {{diag_pod_name_1.stdout_lines | join(',')}} -- python3 /mnt/diag-infra/func_k8s_pod_network_gdr.py --type=ssh --key="{{ssh_pod_2.stdout}}" --diag_id={{DiagID}} --ntags={{ntags}}
+  become: yes
+  register: pass_pod1
+- debug:
+    msg: "{{ pass_pod1 }}"
+
+#- name: Diag Func | get pod-1 env
+#  shell: kubectl exec {{diag_pod_name_1.stdout_lines | join(',')}} -- python3 /mnt/diag-infra/func_k8s_pod_network_gdr.py --type=env --diag_id={{DiagID}} --ntags={{ntags}}
+#  become: yes
+#  register: env_pod_1
+#
+#- name: Diag Func | get pod-2 env
+#  shell: kubectl exec {{diag_pod_name_2.stdout_lines | join(',')}} -- python3 /mnt/diag-infra/func_k8s_pod_network_gdr.py --type=env --diag_id={{DiagID}} --ntags={{ntags}}
+#  become: yes
+#  register: env_pod_2
+#- debug:
+#    msg: "{{ env_pod_1 }}"
+#- debug:
+#    msg: "{{ env_pod_2 }}"
+
+- name: Diag Func | get pod-1 env
+  shell: kubectl exec {{diag_pod_name_1.stdout_lines | join(',')}} -- bash -c "echo StrictHostKeyChecking no > /root/.ssh/config"
+  become: yes
+  register: service_pod_1
+- name: Diag Func | get pod-2 env
+  shell: kubectl exec {{diag_pod_name_2.stdout_lines | join(',')}} -- bash -c "echo StrictHostKeyChecking no > /root/.ssh/config"
+  become: yes
+  register: service_pod_2
+- debug:
+    msg: "{{ service_pod_1 }}"
+- debug:
+    msg: "{{ service_pod_2 }}"
+
+
+- name: Diag Func | get pod-1 env
+  shell: kubectl exec {{diag_pod_name_1.stdout_lines | join(',')}} -- /bin/bash -c 'service ssh start'
+  become: yes
+  register: service_pod_1
+- name: Diag Func | get pod-2 env
+  shell: kubectl exec {{diag_pod_name_2.stdout_lines | join(',')}} -- /bin/bash -c 'service ssh start'
+  become: yes
+  register: service_pod_2
+- debug:
+    msg: "{{ service_pod_1 }}"
+- debug:
+    msg: "{{ service_pod_2 }}"
+
+
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -o wide | grep -e -0001-0 | grep -v IP | awk '{ print $6 }'
+  register: ip_pod_1
+- debug:
+    msg: "{{ ip_pod_1 }}"
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -o wide | grep -e -0001-1 | grep -v IP | awk '{ print $6 }'
+  register: ip_pod_2
+- debug:
+    msg: "{{ ip_pod_2 }}"
+
+- name: Diag Func | gdr script copy
+  template:
+    src: script_gdr.sh.j2
+    dest: /tmp/script_gdr.sh
+  vars:
+    leftHost: "{{ip_pod_1.stdout}}"
+    rightHost: "{{ip_pod_2.stdout}}"
+  become: yes
+  register: gdr_result
+- name: Diag Func | copy file to pod
+  shell: kubectl cp /tmp/script_gdr.sh {{diag_pod_name_2.stdout.split('/').1}}:/root/script_gdr.sh
+  register: copy_result
+- debug:
+    msg: "{{ copy_result }}"
+- name: Diag Func | copy file to pod
+  shell:  kubectl exec {{diag_pod_name_2.stdout}} -- python3 /mnt/diag-infra/perf_k8s_pod_network_gdr.py --diag_id={{DiagID}} --ntags={{ntags}} --log=file
+  #shell: kubectl exec {{diag_pod_name_1.stdout}} -- /bin/bash -c "bash /root/script_gdr.sh"
+  register: gdr_result
+- debug:
+    msg: "{{ gdr_result }}"
+
+- name: Diag Func | copy file to pod
+  shell: kubectl delete statefulset --all
+  register: copy_result
+
+
+
+    

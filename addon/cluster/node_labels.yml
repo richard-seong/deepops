@@ -1,0 +1,54 @@
+---
+- hosts: kube-node
+  gather_facts: true
+  tasks:
+  - name: GPU-Node | Set Role on Kube-node
+    shell: kubectl label node --overwrite "{{ inventory_hostname }}" "{{ command }}"
+    with_items:
+      - gpu
+      - worker
+    ignore_errors: yes
+    delegate_to: '{{ groups["kube-master"][0] }}'
+    when: node_roles == 'gpu'
+    vars:
+      command: 'node-role.kubernetes.io/"{{ item }}"=""'
+ 
+  - name: CPU-Node | Set Role on Kube-node
+    shell: kubectl label node --overwrite "{{ inventory_hostname }}" "{{ command }}"
+    with_items:
+      - cpu
+      - worker
+    ignore_errors: yes
+    delegate_to: '{{ groups["kube-master"][0] }}'
+    when: node_roles == 'cpu'
+    vars:
+      command: 'node-role.kubernetes.io/"{{ item }}"=""'
+
+  - name: PRE-Node | Set Role on Kube-node
+    shell: kubectl label node --overwrite "{{ inventory_hostname }}" "{{ command }}"
+    with_items:
+      - pre
+      - worker
+    ignore_errors: yes
+    delegate_to: '{{ groups["kube-master"][0] }}'
+    when: node_roles == 'pre'
+    vars:
+      command: 'node-role.kubernetes.io/"{{ item }}"=""'
+
+  - name: GPU-Node | Set Taint on Kube-node
+    shell: kubectl taint node --overwrite "{{ inventory_hostname }}" "{{ item }}"
+    with_items:
+      - nvidia.com/gpu:NoSchedule
+      - sr-cloud.com/dedicated=data-cloud-lab-mlp-product:NoSchedule
+    ignore_errors: yes
+    delegate_to: '{{ groups["kube-master"][0] }}'
+    when: node_roles == 'gpu'
+    
+  - name: PRE-Node | Set Taint on Kube-node
+    shell: kubectl taint node --overwrite "{{ inventory_hostname }}" "{{ item }}"
+    with_items:
+      - node-role.kubernetes.io/pre:NoSchedule
+    ignore_errors: yes
+    delegate_to: '{{ groups["kube-master"][0] }}'
+    when: node_roles == 'pre'
+    

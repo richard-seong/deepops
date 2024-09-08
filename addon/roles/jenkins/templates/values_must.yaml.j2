@@ -1,0 +1,26 @@
+controller:
+  image: "jenkins/jenkins"
+  tag: "jdk11"
+  numExecutors: 4
+  admin:
+    userKey: jenkins-admin-user
+    passwordKey: jenkins-admin-password
+  installPlugins: []
+  sidecars:
+    configAutoReload:
+      enabled: true
+      image: kiwigrid/k8s-sidecar:1.15.0
+  ingress:
+    enabled: true
+    paths: 
+    aannotations:
+      kubernetes.io/ingress.class: nginx
+    hostName: {{jenkins_hostname}} 
+    tls:
+     - secretName: jenkins-tls
+       hosts:
+         - {{jenkins_hostname}} 
+persistence:
+  enabled: true
+  existingClaim: jenkins-data
+

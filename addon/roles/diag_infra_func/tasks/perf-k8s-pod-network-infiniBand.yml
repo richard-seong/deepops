@@ -1,0 +1,69 @@
+---
+- name: Diag Func | Copy Pod manifests
+  template:
+   src: perf_infiniband_pod_network.yaml.j2
+   dest: /tmp/perf-infiniband-pod-{{ role }}.yml
+  vars:
+   role: server
+   node_host: "{{node}}"
+  delegate_to: localhost
+
+- name: Diag Func | Copy Pod manifests
+  template:
+   src: perf_infiniband_pod_network.yaml.j2
+   dest: /tmp/perf-infiniband-pod-{{ role }}.yml
+  vars:
+   role: client
+   node_host: "{{client}}"
+  delegate_to: localhost
+
+- name: Diag Func | Deploy perf server pod on kubernetes
+  shell: kubectl apply -f  /tmp/perf-infiniband-pod-server.yml && kubectl apply -f /tmp/perf-infiniband-pod-client.yml
+  become: yes
+  delegate_to: localhost
+
+- name: Diag Func - weka[static] | Waiting for pod condition is ready
+  shell: kubectl wait --for=condition=Ready pods --selector app=infiniband-pod-network
+  delegate_to: localhost
+  become: yes
+
+- name: Diag Func | get client  pod name on kubernetes
+  shell: kubectl get pod | grep -e -server | awk '{ print $1 }'
+  become: yes
+  delegate_to: localhost
+  register: server_pod_name
+- debug:
+    msg: "{{ server_pod_name }}"
+- name: Diag Func | get client  pod name on kubernetes
+  shell: kubectl get pod | grep -e -client | awk '{ print $1 }'
+  become: yes
+  delegate_to: localhost
+  register: client_pod_name
+- debug:
+    msg: "{{ client_pod_name }}"
+- name: Diag Func | get test server pod ip on kubernetes
+  shell: kubectl exec -it {{server_pod_name.stdout}} -- /sbin/ifconfig net1 | awk '/inet / {print $2}'
+  #shell: kubectl get pod -o wide| grep -server | awk '{print $6 }'
+  become: yes
+  delegate_to: localhost
+  register: server_pod_ip
+
+- debug:
+    msg: "{{ server_pod_ip }}"
+    #- name: Diag Func | exec server pod on kubernetes
+    # shell: kubectl exec {{ server_pod_name.stdout }} -- python3 /mnt/diag-infra/perf_k8s_pod_network_infiniband.py --log=stdout --type=server --diag_id={{diag_id}}
+    # become: yes
+    #delegate_to: localhost
+    # register: perf_server_result
+    #async: 100
+    # poll: 0
+  #- debug: "{{ perf_server_result }}"
+
+- name: Diag Func | exec client pod on kubernetes
+  shell: kubectl exec {{ client_pod_name.stdout }} -- python3 /mnt/diag-infra/perf_k8s_pod_network_infiniband.py --ip={{ server_pod_ip.stdout}} --log=stdout --type=client --diag_id={{diag_id}}
+  become: yes
+  register: perf_client_result
+  delegate_to: localhost
+
+- debug:
+    msg: "{{ perf_client_result }}"

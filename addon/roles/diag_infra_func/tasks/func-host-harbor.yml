@@ -1,0 +1,25 @@
+---
+- name: Diag Func | Copy Test python files on node
+  copy:
+    src: /mnt/diag-infra.tar.gz
+    dest: /mnt/diag-infra.tar.gz
+
+- name: Diag Func | Extract Test python files on node
+  unarchive:
+    src: /mnt/diag-infra.tar.gz
+    dest: /mnt/
+    #remote_src: yes
+  become: yes
+
+- name: Install bottle python package on version 0.11
+  ansible.builtin.pip:
+    name: python-dotenv
+
+- name: Diag Func | Testing network function on host
+  #shell: python3 /mnt/diag-infra/func_host_network_ethenet.py --target_group={{ node }} --log=stdout
+  shell: python3 /mnt/diag-infra/func_host_harbor.py --log=file --id={{ id }} --pw={{ pw }} --image={{ image }} --diag_id=1
+  register: network_host_test
+  become: yes
+
+- debug:
+    msg: "{{ network_host_test }}"

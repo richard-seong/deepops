@@ -1,0 +1,6 @@
+---
+
+- hosts: "{{ groups['kube-master'][0] }}"
+  gather_facts: true
+  roles:
+    - role: harbor

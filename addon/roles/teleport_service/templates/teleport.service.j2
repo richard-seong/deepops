@@ -1,0 +1,10 @@
+[Unit]
+Description=Teleport Service
+
+[Service]
+Type=simple
+ExecStart=teleport run --config=/root/.config/node_config.yaml
+Restart=on-failure
+
+[install]
+WantedBy=multi-user.target

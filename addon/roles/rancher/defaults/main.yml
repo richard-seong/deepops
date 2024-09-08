@@ -1,0 +1,12 @@
+
+rancher_adminpw: "megazone00!"
+
+http_proxy:
+https_proxy:
+no_proxy:
+
+rancher_hostname: n6-rancher.spcinfra.cloud
+rancher_namespace: cattle-system
+
+#tls_cert_path: "/etc/cert/tls.crt"
+#tls_key_path: "/etc/cert/tls.key"

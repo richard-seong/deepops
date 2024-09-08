@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gdr-test-pod-{{ type }}
+  #namespace : diag-infra
+  labels:
+    app: gdr-test
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[
+      {"name": "sriov-gpu-ib0", "interface": "net1"},
+      {"name": "sriov-gpu-ib1", "interface": "net2"}
+    ]'
+spec:
+  tolerations:
+    - key: sr-cloud.com/dedicated
+      operator: Equal
+      value: data-cloud-lab-mlp-product
+      effect: NoSchedule
+    - key: nvidia.com/gpu
+      operator: Equal
+      effect: NoSchedule
+
+  containers:
+  - name: gdr-test
+    image: "n6-repo.spcinfra.cloud/sgcp/mpitest:v0.1"
+    #image: seokbin9023/my-repository:diag-infra
+    #image: n3-repo.spcinfra.cloud/library/diag-infra
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: pv-diag-infra
+      mountPath: /mnt/
+      readOnly: false
+    command:
+    - sh
+    - -c
+    - mkdir -p /var/log/diag-infra && sleep inf
+    securityContext:
+      capabilities:
+        add: [ "IPC_LOCK" ]
+      privileged: true
+    resources:
+      requests:
+        openshift.io/gpu_mlnx_ib0: "1"
+        openshift.io/gpu_mlnx_ib1: "1"
+        nvidia.com/gpu: 2
+      limits:
+        openshift.io/gpu_mlnx_ib0: "1"
+        openshift.io/gpu_mlnx_ib1: "1"
+        nvidia.com/gpu: 2
+
+  imagePullSecrets:
+  - name: harbor-regcred
+  volumes:
+  - name: pv-diag-infra
+    persistentVolumeClaim:
+      claimName: pvc-static-diag-infra
+  #nodeName: {{nodename_var}}

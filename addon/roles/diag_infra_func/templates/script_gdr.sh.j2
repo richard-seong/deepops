@@ -1,0 +1,6 @@
+
+cd /root/hpcx-v2.10-gcc-MLNX_OFED_LINUX-5-ubuntu20.04-cuda11-gdrcopy2-nccl2.11-x86_64 && source hpcx-init.sh && hpcx_load &&export PMIX_INSTALL_PREFIX=/root/hpcx-v2.10-gcc-MLNX_OFED_LINUX-5-ubuntu20.04-cuda11-gdrcopy2-nccl2.11-x86_64/ompi
+
+mpirun --allow-run-as-root -np 2 -v -H {{leftHost}},{{rightHost}} \
+        -x LD_LIBRARY_PATH -x CUDA_VISIBLE_DEVICES=0 \
+        -x UCX_RNDV_SCHEME=get_zcopy $HPCX_OSU_CUDA_DIR/osu_bw D D

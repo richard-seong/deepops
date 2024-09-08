@@ -1,0 +1,17 @@
+- name: Diag Func | Copy Test python files on node
+  copy:
+    src: diag-infra.tar.gz
+    dest: /tmp/diag-infra.tar.gz
+
+- name: Diag Func | Extract Test python files on node
+  unarchive:
+    src: /tmp/diag-infra.tar.gz
+    dest: /mnt/
+    remote_src: yes
+  become: yes
+
+- name: Diag Func | Testing network function on host
+  shell: python3 /mnt/diag-infra/func_k8s_diff_resource.py --log=file --bfile={{ bfile }} --ffile={{ ffile }} --diag_id=1
+  become: yes
+  register: network_host_test
+

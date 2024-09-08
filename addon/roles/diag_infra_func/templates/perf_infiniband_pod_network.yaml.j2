@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: infiniband-pod-network-pod-{{ node_host }}-{{role}}
+  #namespace: diag-infra
+  labels:
+    app: infiniband-pod-network
+spec:
+  selector:
+    matchLabels:
+      app: infiniband-pod-network
+  template:
+    metadata:
+      labels:
+        app: infiniband-pod-network
+      annotations:
+        k8s.v1.cni.cncf.io/networks: '[
+                {"name": "sriov-gpu-ib0", "interface": "net1"},
+                {"name": "sriov-gpu-ib1", "interface": "net2"}
+        ]'
+    spec:
+      hostIPC: true
+      tolerations:
+      - key: sr-cloud.com/dedicated
+        operator: Equal
+        value: data-cloud-lab-mlp-product
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Equal
+        effect: NoSchedule
+
+      - key: "status"
+        operator: "Equal"
+        value: "diag-infra"
+        effect: "NoSchedule"
+      containers:
+      #- image: {{harbor_url}}/mzc/diag-infra:1.0
+      - image: seokbin9023/my-repository:diag-infra 
+        name: gds
+        securityContext:
+          capabilities:
+            add: [ "IPC_LOCK" ]
+          privileged: true
+        resources:
+          requests:
+            openshift.io/gpu_mlnx_ib0: '1'
+            openshift.io/gpu_mlnx_ib1: '1'
+          limits:
+            openshift.io/gpu_mlnx_ib0: '1'
+            openshift.io/gpu_mlnx_ib1: '1'
+        command:
+        - /bin/bash
+        - -c
+        - sleep inf
+        volumeMounts:
+        - name: certificates
+          mountPath: /usr/share/ca-certificates/proxysg/SRnD_Web_Proxy.crt
+        - name: pv-diag-infra
+          mountPath: /mnt/
+        #- name: mount-test
+        #  mountPath: /data
+        - name: udev
+          mountPath: /run/udev
+          readOnly: true
+      imagePullSecrets:
+      - name: docker-regcred
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      volumes:
+      - name: certificates
+        hostPath:
+          path: /usr/share/ca-certificates/proxysg/SRnD_Web_Proxy.crt
+      - name: pv-diag-infra
+        persistentVolumeClaim:
+          claimName: pvc-static-diag-infra
+      #- name: mount-test
+      #  persistentVolumeClaim:
+      #    claimName: weka-dynamic-pvc-test
+      - name: udev
+        hostPath:
+          path: /run/udev
+      nodeSelector:
+        kubernetes.io/hostname: {{ node_host }}
+

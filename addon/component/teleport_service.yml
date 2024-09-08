@@ -1,0 +1,54 @@
+---
+
+- hosts: "{{ node | default('k8s-cluster') }}"
+  gather_facts: true
+  tasks:
+  - name: teleport | Unarchibe teleport package file on node
+    unarchive:
+      src: https://get.gravitational.com/teleport-v10.1.4-linux-amd64-bin.tar.gz
+      dest: /tmp/
+    register: teleport_package_unarchive
+
+  - name: teleport | Install teleport package
+    shell: sh /tmp/teleport/install
+    become: yes
+    when: teleport_package_unarchive.changed
+
+  - name: teleport | Getting teleport pod on teleport-agent
+    shell: kubectl get pod -n teleport-cluster | awk '{ print $1 }' | grep teleport
+    delegate_to: "{{ teleport_mgmt_master_node }}"
+    register: teleport_pod
+    ignore_errors: true
+
+  - name: teleport | Checking teleport token on pod
+    shell: kubectl exec -it {{ teleport_pod.stdout_lines[0] }} -n teleport-cluster -- tctl tokens ls | grep Node | awk '{ print $1 }'
+    delegate_to: "{{ teleport_mgmt_master_node }}"
+    register: check_token_teleport
+    #when: not teleport_pod.failed
+
+  - name: teleport | Create teleport token on pod
+    shell: kubectl exec -it {{ teleport_pod.stdout_lines[0] }} -n teleport-cluster -- tctl tokens add --type=node
+    delegate_to: "{{ teleport_mgmt_master_node }}"
+    register: teleport_create_token
+    when: check_token_teleport.stdout == 'No active tokens found.'
+
+  - name: teleport | Getting teleport token on pod
+    shell: kubectl exec -it {{ teleport_pod.stdout_lines[0] }} -n teleport-cluster -- tctl tokens ls | grep Node | awk '{ print $1 }'
+    delegate_to: "{{ teleport_mgmt_master_node }}"
+    register: token_teleport
+
+  - name: teleport | Check teleport token
+    set_fact:
+      teleport_token: "{{ token_teleport.stdout }}"
+    when: not teleport_create_token.changed
+  - debug:
+      var: teleport_token
+    when: not teleport_create_token.changed
+
+- hosts: "{{ node | default('k8s-cluster') }}"
+  gather_facts: true
+  become: yes
+  roles:
+    - role: teleport_service
+#      vars:
+#  teleport_token: a3b242c9c8d99747a57c7df278b8dc4f

@@ -1,0 +1,17 @@
+---
+- name: Diag Func | Copy to node for deploy yaml
+  template:
+    src: gds_pod.yaml.j2
+    dest: /tmp/gds-pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ ansible_hostname }}"
+
+
+- name: Diag Func | Deploy test gdr pod on kubernetes
+  shell: kubectl apply -f  /tmp/gds-pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ ansible_hostname }}"
+
+      #- name: Diag Func   

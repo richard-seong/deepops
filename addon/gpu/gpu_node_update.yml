@@ -1,0 +1,34 @@
+---
+
+# Get weka resource for cpus
+#- include: gpu_cups.yml
+
+# Install the nvidia-container-toolkit on gpu
+#- include: gpu_node_package.yml
+
+# Set configuration for Caas gpu topology hook server
+- hosts: "{{ node | default('gpu-node') }}"
+  gather_facts: true
+  tasks:
+  - name: GPU node | Get weka resource for cpus
+    shell: cat /sys/fs/cgroup/cpuset/{{ weka_path }}/cpuset.cpus
+    become: yes
+    register: weka_cpus
+    ignore_errors: yes
+
+  - include_tasks: gpu_node_package.yml
+
+- hosts: "{{ node | default('gpu-node') }}"
+  gather_facts: true
+  vars:
+   ansible_become: yes
+  roles:
+    - role: caas_gpu_hook_server_service
+      vars:
+        caas_version: "v1.5.0-beta.1"
+        caas_excluded_cpus: "{{ weka_cpus.stdout }}"
+      when: caas_excluded_cpus is defined
+        
+    - role: caas_gpu_hook_server_socket
+      when: caas_excluded_cpus is defined
+

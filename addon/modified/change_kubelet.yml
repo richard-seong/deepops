@@ -1,0 +1,21 @@
+---
+
+# changed configuration for Caas gpu topology hook server
+- hosts: new-node
+  gather_facts: false
+  vars:
+    ansible_become: yes
+  tasks:
+  - name: new-node | Rewrite kubelet.env config file
+    replace:
+      path: "/etc/kubernetes/kubelet.env"
+      regexp: 'containerd-hook.sock'
+      replace: 'containerd.sock'
+    register: change_kubelet
+     
+  - name: new-node | Restart service kubelet
+    systemd:
+      name: kubelet
+      daemon_reload: yes
+      state: restarted
+    when: change_kubelet.changed

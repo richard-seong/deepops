@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: weka-static-test-pod-{{ node }}
+  namespace : diag-infra
+  labels:
+    app: weka-static-test 
+spec:
+  containers:
+  - name: weka-static-test 
+    #image: n6-repo.spcinfra.cloud/mzc/diag-infra:1.0 
+    image: {{ harbor_url }}/mzc/diag-infra:1.0 
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: pv-diag-infra
+      mountPath: /mnt/
+      readOnly: false
+    - name: mount-test
+      mountPath: /data
+    - name: diag-log
+      mountPath: /var/log/diag-infra
+    command:
+    - sh
+    - -c
+    - echo "test" >> /data/test.txt && python3 /mnt/diag-infra/func_k8s_weka_static_provisioning.py --log=file --diag_id={{ DiagID }} --ntags={{ ntags}}  && sleep 3600
+  imagePullSecrets:
+  - name: harbor-regcred 
+  volumes:
+  - name: mount-test 
+    persistentVolumeClaim:
+      claimName: weka-static-pvc-test 
+  - name: diag-log
+    hostPath:
+      path: /var/log/diag-infra
+  - name: pv-diag-infra
+    persistentVolumeClaim:
+      claimName: pvc-static-diag-infra 
+  nodeName: {{ node }}

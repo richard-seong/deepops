@@ -1,0 +1,46 @@
+---
+- name: Diag Func | Copy to node for deploy yaml
+  template:
+    src: test_pod.yaml.j2
+    dest: /tmp/pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ ansible_hostname }}"
+
+- name: Diag Func | Deploy test pod on kubernetes
+  shell: kubectl apply -f  /tmp/pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ ansible_hostname }}"
+
+- name: Diag Func | Waiting for pod condition is ready
+  shell: kubectl wait -n diag-infra --for=condition=Ready pods --selector app=diag-infra-ethernet 
+  become: yes
+
+
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -n diag-infra -oname | grep diag-infra-pod-ethernet
+  become: yes
+  register: diag_pod_name
+  
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -n kube-system -o wide | grep nodelocaldns | grep -v IP | awk '{ print $7 }'
+  become: yes
+  register: pod_ipaddress
+  
+- name: Diag Func | exec test pod on kubernetes
+  shell: kubectl exec {{ item }} -n diag-infra -- python3 /mnt/diag-infra/func_pod_network_ethernet.py --target_group={{ pod_ipaddress.stdout_lines|join(',') }} --log=file --interface={{interface}} --sampling={{ sampling | default(3) }} --diag_id={{ DiagID }} --ntags={{ ntags}} 
+  become: yes
+  register: diag_pod_name_result
+  with_items:
+    "{{ diag_pod_name.stdout_lines }}"
+    
+- debug:
+    msg: "{{ diag_pod_name_result }}"
+
+- name: Diag Func | Deploy test pod on kubernetes
+  shell: kubectl delete -f  /tmp/pod-{{ item }}.yaml
+  become: yes
+  with_items:
+    - "{{ ansible_hostname }}"
+

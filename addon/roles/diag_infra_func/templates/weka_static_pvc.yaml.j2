@@ -1,0 +1,14 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+ name: weka-static-pvc-test
+ namespace: diag-infra 
+spec:
+ storageClassName: {{  default_sc  }} 
+ accessModes:
+ - ReadWriteMany
+ volumeName: weka-static-pv 
+ volumeMode: Filesystem
+ resources:
+   requests:
+     storage: 5G

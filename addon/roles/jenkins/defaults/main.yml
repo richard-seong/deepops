@@ -1,0 +1,6 @@
+---
+
+jenkins_namespace: jenkins
+jenkins_hostname: n3-jenkins.spcinfra.cloud
+jenkins_storageclass: storageclass-n3-sgcp-mgmt-default 
+

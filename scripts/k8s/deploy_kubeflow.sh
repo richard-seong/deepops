@@ -18,7 +18,7 @@ export KUBEFLOW_DEPLOY_TIMEOUT="${KUBEFLOW_DEPLOY_TIMEOUT:-1200}"
 # Define Kubeflow manifests location
 export KUBEFLOW_MANIFESTS_DEST="${KUBEFLOW_MANIFESTS_DEST:-${CONFIG_DIR}/kubeflow-install/manifests}"
 export KUBEFLOW_MANIFESTS_URL="${KUBEFLOW_MANIFESTS_URL:-https://github.com/kubeflow/manifests}"
-export KUBEFLOW_MANIFESTS_VERSION="${KUBEFLOW_MANIFESTS_VERSION:-v1.7.0}"
+export KUBEFLOW_MANIFESTS_VERSION="${KUBEFLOW_MANIFESTS_VERSION:-v1.4.1}"
 
 # Define configuration we're injecting into the manifests location
 export KUBEFLOW_DEEPOPS_CONFIG_DIR="${KUBEFLOW_DEEPOPS_CONFIG_DIR:-${CONFIG_DIR}/files/kubeflow}"
@@ -26,7 +26,7 @@ export KUBEFLOW_DEEPOPS_DEX_CONFIG="${KUBEFLOW_DEEPOPS_DEX_CONFIG:-${KUBEFLOW_DE
 export KUBEFLOW_DEEPOPS_USERNS_PARAMS="${KUBEFLOW_DEEPOPS_USERNS_PARAMS:-${KUBEFLOW_DEEPOPS_CONFIG_DIR}/user-namespace-params.env}"
 
 # Define Kustomize location
-export KUSTOMIZE_URL="${KUSTOMIZE_URL:-https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.0/kustomize_v5.1.0_linux_amd64.tar.gz}"
+export KUSTOMIZE_URL="${KUSTOMIZE_URL:-https://github.com/kubernetes-sigs/kustomize/releases/download/v3.2.0/kustomize_3.2.0_linux_amd64}"
 export KUSTOMIZE="${KUSTOMIZE:-${CONFIG_DIR}/kustomize}"
 
 function help_me() {
@@ -136,19 +136,6 @@ function clone_repo() {
   cp -v "${KUBEFLOW_DEEPOPS_DEX_CONFIG}" "${KUBEFLOW_MANIFESTS_DEST}/common/dex/base/config-map.yaml"
   cp -v "${KUBEFLOW_DEEPOPS_USERNS_PARAMS}" "${KUBEFLOW_MANIFESTS_DEST}/common/user-namespace/base/params.env"
 
-  # BUG: https://stackoverflow.com/questions/76502195/horizontalpodautoscaler-not-found-on-minikube-when-installing-kubeflow
-  sed -i 's:autoscaling/v2beta2:autoscaling/v2:' "${KUBEFLOW_MANIFESTS_DEST}/common/knative/knative-serving/base/upstream/serving-core.yaml"
-
-  # XXX: Change the default Istio Ingress Gateway configuration to support NodePort for ease-of-use in on-prem
-  sed -i 's:ClusterIP:NodePort:g' "${KUBEFLOW_MANIFESTS_DEST}/common/istio-1-16/istio-install/base/patches/service.yaml"
-
-  # XXX: Make the Kubeflow cluster allow insecure http instead of https
-  # Remove this for any production cluster and enable HTTPS suitable for the environment
-  # XXX: https://github.com/kubeflow/manifests#connect-to-your-kubeflow-cluster
-  sed -i 's:JWA_APP_SECURE_COOKIES=true:JWA_APP_SECURE_COOKIES=false:' "${KUBEFLOW_MANIFESTS_DEST}/apps/jupyter/jupyter-web-app/upstream/base/params.env"
-  sed -i 's:VWA_APP_SECURE_COOKIES=true:VWA_APP_SECURE_COOKIES=false:' "${KUBEFLOW_MANIFESTS_DEST}/apps/volumes-web-app/upstream/base/params.env"
-  sed -i 's:TWA_APP_SECURE_COOKIES=true:TWA_APP_SECURE_COOKIES=false:' "${KUBEFLOW_MANIFESTS_DEST}/apps/tensorboard/tensorboards-web-app/upstream/base/params.env"
-
   popd
   echo "Kubeflow manifests repo:"
   echo "- Cloned from: ${KUBEFLOW_MANIFESTS_URL}"
@@ -160,8 +147,7 @@ function stand_up() {
   pushd .
   pushd "${KUBEFLOW_MANIFESTS_DEST}"
 
-  wget -O "${KUSTOMIZE}.tgz" "${KUSTOMIZE_URL}"
-  tar -xvf "${KUSTOMIZE}.tgz" -C "${CONFIG_DIR}"
+  wget -O "${KUSTOMIZE}" "${KUSTOMIZE_URL}"
   chmod +x "${KUSTOMIZE}"
 
   echo "Beginning Kubeflow deployment"
@@ -235,7 +221,7 @@ function poll_url() {
 
 function get_url() {
   # Get LoadBalancer and NodePorts
-  master_ip=$(kubectl get nodes -l node-role.kubernetes.io/control-plane= --no-headers -o custom-columns=IP:.status.addresses.*.address | cut -f1 -d, | head -1)
+  master_ip=$(kubectl get nodes -l node-role.kubernetes.io/master= --no-headers -o custom-columns=IP:.status.addresses.*.address | cut -f1 -d, | head -1)
   nodePort="$(kubectl get svc -n istio-system istio-ingressgateway --no-headers -o custom-columns=PORT:.spec.ports[?\(@.name==\"http2\"\)].nodePort)"
   secure_nodePort="$(kubectl get svc -n istio-system istio-ingressgateway --no-headers -o custom-columns=PORT:.spec.ports[?\(@.name==\"https\"\)].nodePort)"
   lb_ip="$(kubectl get svc -n istio-system istio-ingressgateway --no-headers -o custom-columns=:.status.loadBalancer.ingress[0].ip)"

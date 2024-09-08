@@ -1,0 +1,33 @@
+---
+
+- name: Diag Func[infiniband] | Copy to node for deploy yaml
+  template:
+    src: infiniband_pod_network.yaml.j2
+    dest: /tmp/infiniband-pod-test.yaml
+  become: yes
+  deletegate_to: localhost
+    
+- name: Diag Func | Deploy test pod on kubernetes
+  shell: kubectl apply -f  /tmp/inifiniband-pod-test.yaml
+  become: yes
+    
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -n diag-infra -oname
+  become: yes
+  register: diag_pod_name
+  
+- name: Diag Func | get test pod on kubernetes
+  shell: kubectl get pod -n kube-system -o wide | grep nodelocaldns | grep -v IP | awk '{ print $7 }'
+  become: yes
+  register: pod_ipaddress
+  
+- name: Diag Func | exec test pod on kubernetes
+  shell: kubectl exec {{ item }} -n diag-infra -- python3 /mnt/diag-infra/func_pod_network_infiniband.py --target_group={{ pod_ipaddress.stdout_lines|join(',') }} --interface={{ interface }} --log=stdout --sampling={{ sampling | default(0) }}
+  become: yes
+  register: diag_pod_name_result
+  with_items:
+    "{{ diag_pod_name.stdout_lines }}"
+    
+- debug:
+    msg: "{{ diag_pod_name_result }}"
+

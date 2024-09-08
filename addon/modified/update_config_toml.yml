@@ -1,0 +1,14 @@
+---
+- hosts: "{{ node | default('kube-node') }}"
+  gather_facts: true
+  vars:
+    ansible_becoms: yes
+  roles:
+    - role: update_config_toml
+      when: node_roles != 'gpu'
+
+    - role: update_config_toml
+      vars:
+        containerd_default_runtime: "nvidia"
+      when: node_roles == 'gpu'
+

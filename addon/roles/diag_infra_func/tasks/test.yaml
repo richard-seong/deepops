@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: test
+  name: test
+spec:
+  containers:
+  - image: n3-repo.spcinfra.cloud/libraray:gds 
+    name: test
+    resources: {}
+  imagePullSecrets:
+  - name: harbor
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}

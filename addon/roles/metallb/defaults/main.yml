@@ -1,0 +1,6 @@
+---
+
+metallb_namespace: metallb
+metallb_ippools: 192.168.254.11-192.168.254.50
+nginx_ingress_external_ip: 192.168.254.50
+

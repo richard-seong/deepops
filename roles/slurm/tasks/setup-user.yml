@@ -7,7 +7,7 @@
 
 - name: create slurm user
   user:
-    name: "{{ slurm_username }}"
+    name: slurm
     state: present
     system: yes
     home: "{{ slurm_user_home }}"

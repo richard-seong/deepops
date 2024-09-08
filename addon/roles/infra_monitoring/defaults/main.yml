@@ -1,0 +1,27 @@
+
+monitoring_pw: "pure12!@"
+
+http_proxy:
+https_proxy:
+no_proxy:
+
+infra_monitoring_namespace: monitoring
+infra_monitoring_storageclass: longhorn
+
+grafana_size: 10Gi
+
+prometeus_external_label_name: mgmt
+
+# service type of each component is NodePort, ClusterIP or LoadBalancer
+prometheus_service_type: ClusterIP
+prometheus_operator_service_type: ClusterIP
+prometheus_thanos_service_type: LoadBalancer
+thanos_ruler_service_type: ClusterIP
+thanos_queryfrontend_service_type: LoadBalancer
+alertmanager_service_type: ClusterIP
+grafana_service_type: LoadBalancer
+
+# Thanos stores sidecar list
+thanos_prometheus:
+#- kube-prometheus-stack-thanos-discovery:10901
+- kube-prometheus-prometheus-thanos:10901

@@ -1,0 +1,18 @@
+---
+
+- name: New Node set taint
+  hosts: "{{ node | default('new-node') }}"
+  tasks:
+    - name: set taint diag-infra on new node
+      shell: kubectl taint node --overwrite {{ inventory_hostname }} status=diag-infra:NoSchedule
+      delegate_to: '{{ groups["kube-master"][0] }}' 
+      ignore_errors: yes
+    
+    - name: New-Node | Set Role on Kube-node
+      shell: kubectl label node --overwrite "{{ inventory_hostname }}" "{{ command }}"
+      with_items:
+        - new-infra
+      ignore_errors: yes
+      delegate_to: '{{ groups["kube-master"][0] }}'
+      vars:
+        command: 'node-role.kubernetes.io/"{{ item }}"=""'

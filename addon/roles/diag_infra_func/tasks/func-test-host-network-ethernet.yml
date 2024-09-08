@@ -1,0 +1,24 @@
+---
+
+- name: Diag Func | Copy Test python files on node
+  copy:
+    src: diag-infra.tar.gz
+    dest: /tmp/diag-infra.tar.gz
+  tags: hosts_diag
+
+- name: Diag Func | Extract Test python files on node
+  unarchive:
+    src: /tmp/diag-infra.tar.gz
+    dest: /mnt/
+    remote_src: yes
+  become: yes
+  tags: hosts_diag
+
+- name: Diag Func | Testing network function on host
+  #shell: python3 /mnt/diag-infra/func_host_network_ethenet.py --target_group={{ node }} --log=stdout
+  shell: python3 /mnt/diag-infra/func_host_network_ethenet.py --target_group={{ target_group }} --interface={{ interface}} --log=stdout
+  register: network_host_test
+  tags: func_host_network_ethenet 
+
+- debug:
+    msg: "{{ network_host_test }}"

@@ -1,0 +1,10 @@
+---
+
+- name: Diag Func | Testing network function on host
+  #shell: python3 /mnt/diag-infra/func_host_network_ethenet.py --target_group={{ node }} --log=stdout
+  shell: python3 /mnt/diag-infra/func_host_proxy.py --id={{ id }} --pw={{ pw }} --image={{ image }}
+  register: network_host_test
+  tags: func_host_proxy 
+
+- debug:
+    msg: "{{ network_host_test }}"

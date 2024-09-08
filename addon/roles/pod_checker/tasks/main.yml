@@ -1,0 +1,45 @@
+---
+
+# initialize work_dir
+- block:
+  - name: Deleting work dir
+    file:
+      path: "{{ work_dir }}"
+      state: absent
+
+  - name: Make working directory
+    file:
+      path: "{{ work_dir }}"
+      state: directory
+      mode: '0755'
+  when: first_run
+
+- name: Run get all resources
+  script:
+    cmd: get_all_resources.sh {{ 'before' if first_run else 'after' }}
+    chdir: "{{ work_dir }}"
+
+# Run verifier when it is not first run
+- block:
+  - name: make diff file and read
+    shell:
+      cmd: |
+        diff before after > diff
+        cat diff | grep '<'
+      chdir: "{{ work_dir }}"
+    register: diffout
+
+  - name: make diff detail
+    script:
+      cmd: diff_checker.sh
+      chdir: "{{ work_dir }}"
+    register: diff_detail_out
+
+  - name: print diff
+    debug:
+      msg: "Diff Result\n\n{{diffout.stdout}}"
+
+  - name: print diff detail
+    debug:
+      msg: "Diff Result\n\n{{diff_detail_out.stdout}}"
+  when: not first_run
