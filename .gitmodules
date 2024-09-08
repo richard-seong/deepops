@@ -1,7 +1,7 @@
 [submodule "kubespray"]
 	path = submodules/kubespray
 	url = https://github.com/kubernetes-sigs/kubespray.git
-        branch = release-2.24
+        branch = release-2.19
 [submodule "packer-maas"]
 	path = submodules/packer-maas
 	url = https://github.com/DeepOps/packer-maas.git
